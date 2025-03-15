@@ -68,6 +68,8 @@ from browser_use.telemetry.views import (
 )
 from browser_use.utils import time_execution_async, time_execution_sync
 
+import lucidicai as lai
+
 logger = logging.getLogger(__name__)
 
 SKIP_LLM_API_KEY_VERIFICATION = os.environ.get('SKIP_LLM_API_KEY_VERIFICATION', 'false').lower()[0] in 'ty1'
@@ -384,6 +386,10 @@ class Agent(Generic[Context]):
 
 		# Telemetry
 		self.telemetry = ProductTelemetry()
+
+		# Lucidic AI
+		self.nextgoal = None
+		self.lucidic_step_history = []
 
 		if self.settings.save_conversation_path:
 			logger.info(f'Saving conversation to {self.settings.save_conversation_path}')
@@ -779,7 +785,7 @@ class Agent(Generic[Context]):
 		result: list[ActionResult] = []
 		step_start_time = time.time()
 		tokens = 0
-
+		self.lucidic_step_history.append(lai.create_step(goal=self.nextgoal))
 		try:
 			browser_state_summary = await self.browser_session.get_state_summary(cache_clickable_elements_hashes=True)
 			current_page = await self.browser_session.get_current_page()
@@ -874,6 +880,11 @@ class Agent(Generic[Context]):
 
 				# Check again for paused/stopped state after getting model output
 				await self._raise_if_stopped_or_paused()
+				if len(self.lucidic_step_history) > 1:
+					lai.update_previous_step(
+						-2,
+						eval_description=model_output.current_state.evaluation_previous_goal,
+					)
 
 				self.state.n_steps += 1
 
@@ -947,6 +958,17 @@ class Agent(Generic[Context]):
 
 			# Log step completion summary
 			self._log_step_completion_summary(step_start_time, result)
+
+			if model_output is not None:
+				lai.end_step(
+					state=model_output.current_state.memory,
+					action=str([action.model_dump(exclude_unset=True) for action in model_output.action]),
+					screenshot=state.screenshot if state else None,
+				)
+			else:
+				lai.end_step()
+
+			self.nextgoal = model_output.current_state.next_goal if model_output else None
 
 	@time_execution_async('--handle_step_error (agent)')
 	async def _handle_step_error(self, error: Exception) -> list[ActionResult]:
