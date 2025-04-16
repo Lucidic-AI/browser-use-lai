@@ -474,7 +474,6 @@ class Agent(Generic[Context]):
 					lai.update_previous_step(
 						-2,
 						eval_description=model_output.current_state.evaluation_previous_goal,
-						is_successful=("Success" in model_output.current_state.evaluation_previous_goal[:15])
 					)
           
 				self.state.n_steps += 1
@@ -559,15 +558,12 @@ class Agent(Generic[Context]):
 
 			if model_output is not None:
 				lai.end_step(
-					is_successful=(self.state.consecutive_failures == 0),
 					state=model_output.current_state.memory,
 					action=str([action.model_dump(exclude_unset=True) for action in model_output.action]),
 					screenshot=state.screenshot if state else None,
 				)
 			else:
-				lai.end_step(
-					is_successful=False,
-				)
+				lai.end_step()
 
 			self.nextgoal = model_output.current_state.next_goal if model_output else None
 
