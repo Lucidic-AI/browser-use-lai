@@ -963,7 +963,7 @@ class Agent(Generic[Context]):
 				lai.end_step(
 					state=model_output.current_state.memory,
 					action=str([action.model_dump(exclude_unset=True) for action in model_output.action]),
-					screenshot=state.screenshot if state else None,
+					screenshot=browser_state_summary.screenshot if browser_state_summary else None,
 				)
 			else:
 				lai.end_step()
