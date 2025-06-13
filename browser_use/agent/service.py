@@ -881,8 +881,8 @@ class Agent(Generic[Context]):
 				# Check again for paused/stopped state after getting model output
 				await self._raise_if_stopped_or_paused()
 				if len(self.lucidic_step_history) > 1:
-					lai.update_previous_step(
-						-2,
+					lai.update_step(
+						step_id=self.lucidic_step_history[-2],
 						eval_description=model_output.current_state.evaluation_previous_goal,
 					)
 
